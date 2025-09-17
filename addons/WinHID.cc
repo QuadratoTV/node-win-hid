@@ -9,9 +9,47 @@
 #include <unordered_set>
 #include <chrono>
 #include <mutex>
+#include <cstdarg>
+#include <cstdio>
 
 #pragma comment(lib, "setupapi.lib")
 #pragma comment(lib, "hid.lib")
+
+// ---------- debug helpers ----------
+static bool g_debug_inited = false;
+static bool g_debug = false;
+
+static void dbg_init() {
+  if (g_debug_inited) return;
+  g_debug_inited = true;
+  const char* e = getenv("WINHID_DEBUG");
+  g_debug = (e && *e && e[0] != '0');
+}
+
+static void dbg_printf(const char* fmt, ...) {
+  dbg_init();
+  if (!g_debug) return;
+  char buf[2048];
+  va_list ap;
+  va_start(ap, fmt);
+  _vsnprintf_s(buf, sizeof(buf), _TRUNCATE, fmt, ap);
+  va_end(ap);
+  // stderr
+  fputs(buf, stderr);
+  fputc('\n', stderr);
+  // debugger
+  OutputDebugStringA(buf);
+  OutputDebugStringA("\n");
+}
+
+static std::string last_error_str(DWORD err = GetLastError()) {
+  LPSTR msg = nullptr;
+  DWORD len = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                             nullptr, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msg, 0, nullptr);
+  std::string s = len ? std::string(msg, len) : std::string("Unknown error");
+  if (msg) LocalFree(msg);
+  return s;
+}
 
 // ---------- helpers ----------
 static std::string wstr_to_utf8(const wchar_t* w) {
@@ -28,13 +66,15 @@ std::string WinHID::WToU8(const wchar_t* w){ return wstr_to_utf8(w); }
 std::string WinHID::WToU8(const std::wstring& w){ return wstr_to_utf8(w); }
 
 bool WinHID::OpenHid(const std::wstring& path, HANDLE& out) {
+  dbg_printf("[WinHID] OpenHid: trying RW overlapped: %s", wstr_to_utf8(path).c_str());
   HANDLE h = CreateFileW(path.c_str(),
                          GENERIC_READ | GENERIC_WRITE,
                          FILE_SHARE_READ | FILE_SHARE_WRITE,
                          nullptr, OPEN_EXISTING,
                          FILE_FLAG_OVERLAPPED, nullptr);
   if (h == INVALID_HANDLE_VALUE) {
-    // try RW non-overlapped
+    dbg_printf("[WinHID] OpenHid: RW overlapped failed: %s", last_error_str().c_str());
+    dbg_printf("[WinHID] OpenHid: trying RW non-overlapped");
     h = CreateFileW(path.c_str(),
                     GENERIC_READ | GENERIC_WRITE,
                     FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -42,7 +82,8 @@ bool WinHID::OpenHid(const std::wstring& path, HANDLE& out) {
                     0, nullptr);
   }
   if (h == INVALID_HANDLE_VALUE) {
-    // try RO overlapped
+    dbg_printf("[WinHID] OpenHid: RW non-overlapped failed: %s", last_error_str().c_str());
+    dbg_printf("[WinHID] OpenHid: trying RO overlapped");
     h = CreateFileW(path.c_str(),
                     GENERIC_READ,
                     FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -50,34 +91,48 @@ bool WinHID::OpenHid(const std::wstring& path, HANDLE& out) {
                     FILE_FLAG_OVERLAPPED, nullptr);
   }
   if (h == INVALID_HANDLE_VALUE) {
-    // try RO non-overlapped
+    dbg_printf("[WinHID] OpenHid: RO overlapped failed: %s", last_error_str().c_str());
+    dbg_printf("[WinHID] OpenHid: trying RO non-overlapped");
     h = CreateFileW(path.c_str(),
                     GENERIC_READ,
                     FILE_SHARE_READ | FILE_SHARE_WRITE,
                     nullptr, OPEN_EXISTING,
                     0, nullptr);
   }
-  if (h == INVALID_HANDLE_VALUE) return false;
+  if (h == INVALID_HANDLE_VALUE) {
+    dbg_printf("[WinHID] OpenHid: all attempts failed");
+    return false;
+  }
+  dbg_printf("[WinHID] OpenHid: success");
   out = h;
   return true;
 }
 
 bool WinHID::GetCaps(HANDLE h, USHORT& usagePage, USHORT& usage, USHORT& inLen) {
   PHIDP_PREPARSED_DATA prep = nullptr;
-  HIDP_CAPS caps;
-  if (!HidD_GetPreparsedData(h, &prep)) return false;
+  HIDP_CAPS caps{};
+  if (!HidD_GetPreparsedData(h, &prep)) {
+    dbg_printf("[WinHID] GetCaps: HidD_GetPreparsedData failed: %s", last_error_str().c_str());
+    return false;
+  }
   NTSTATUS st = HidP_GetCaps(prep, &caps);
-  HidD_FreePreparsedData(prep);
-  if (st != HIDP_STATUS_SUCCESS) return false;
+  if (st != HIDP_STATUS_SUCCESS) {
+    dbg_printf("[WinHID] GetCaps: HidP_GetCaps failed: 0x%08X", (unsigned)st);
+    HidD_FreePreparsedData(prep);
+    return false;
+  }
   usagePage = caps.UsagePage;
   usage = caps.Usage;
   inLen = caps.InputReportByteLength;
+  dbg_printf("[WinHID] GetCaps: UsagePage=%u Usage=%u InLen=%u BtnCaps=%u",
+             usagePage, usage, inLen, caps.NumberInputButtonCaps);
+  HidD_FreePreparsedData(prep);
   return inLen > 0;
 }
 
 // ---------- ctor and class ----------
 WinHID::WinHID(const Napi::CallbackInfo& info)
-  : Napi::ObjectWrap<WinHID>(info) {}
+  : Napi::ObjectWrap<WinHID>(info) { dbg_init(); }
 
 Napi::Function WinHID::GetClass(Napi::Env env) {
   return DefineClass(env, "WinHID", {
@@ -111,6 +166,7 @@ Napi::Value WinHID::GetDevices(const Napi::CallbackInfo& info) {
     DWORD requiredSize = 0;
     SetupDiGetDeviceInterfaceDetailW(devInfo, &ifData, nullptr, 0, &requiredSize, nullptr);
     if (GetLastError() != ERROR_INSUFFICIENT_BUFFER || requiredSize == 0) {
+      dbg_printf("[WinHID] GetDevices: detail size query failed at idx=%lu: %s", index-1, last_error_str().c_str());
       continue;
     }
 
@@ -122,6 +178,7 @@ Napi::Value WinHID::GetDevices(const Napi::CallbackInfo& info) {
     devData.cbSize = sizeof(devData);
 
     if (!SetupDiGetDeviceInterfaceDetailW(devInfo, &ifData, detail, requiredSize, nullptr, &devData)) {
+      dbg_printf("[WinHID] GetDevices: SetupDiGetDeviceInterfaceDetailW failed at idx=%lu: %s", index-1, last_error_str().c_str());
       continue;
     }
 
@@ -157,6 +214,8 @@ Napi::Value WinHID::GetDevices(const Napi::CallbackInfo& info) {
       if (HidD_GetAttributes(h, &attrs)) {
         vid = attrs.VendorID;
         pid = attrs.ProductID;
+      } else {
+        dbg_printf("[WinHID] GetDevices: HidD_GetAttributes failed for %s", devicePath.c_str());
       }
 
       PHIDP_PREPARSED_DATA prep = nullptr;
@@ -165,8 +224,12 @@ Napi::Value WinHID::GetDevices(const Napi::CallbackInfo& info) {
         if (HidP_GetCaps(prep, &caps) == HIDP_STATUS_SUCCESS) {
           usagePage = caps.UsagePage;
           usage = caps.Usage;
+        } else {
+          dbg_printf("[WinHID] GetDevices: HidP_GetCaps failed for %s", devicePath.c_str());
         }
         HidD_FreePreparsedData(prep);
+      } else {
+        dbg_printf("[WinHID] GetDevices: HidD_GetPreparsedData failed for %s", devicePath.c_str());
       }
 
       wchar_t wbuf[256];
@@ -181,6 +244,8 @@ Napi::Value WinHID::GetDevices(const Napi::CallbackInfo& info) {
       }
 
       CloseHandle(h);
+    } else {
+      dbg_printf("[WinHID] GetDevices: CreateFileW failed for %s: %s", devicePath.c_str(), last_error_str().c_str());
     }
 
     Napi::Object dev = Napi::Object::New(env);
@@ -202,18 +267,40 @@ Napi::Value WinHID::GetDevices(const Napi::CallbackInfo& info) {
 
 // ---------- reader thread ----------
 void WinHID::RunReader(std::shared_ptr<Listener> L) {
-  // Pre-parse button caps once
+  dbg_printf("[WinHID] RunReader: starting for %s", wstr_to_utf8(L->pathW).c_str());
+
   PHIDP_PREPARSED_DATA prep = nullptr;
-  if (!HidD_GetPreparsedData(L->handle, &prep)) return;
+  if (!HidD_GetPreparsedData(L->handle, &prep)) {
+    dbg_printf("[WinHID] RunReader: HidD_GetPreparsedData failed at start: %s", last_error_str().c_str());
+    return;
+  }
 
   HIDP_CAPS caps{};
-  if (HidP_GetCaps(prep, &caps) != HIDP_STATUS_SUCCESS) { HidD_FreePreparsedData(prep); return; }
+  if (HidP_GetCaps(prep, &caps) != HIDP_STATUS_SUCCESS) {
+    dbg_printf("[WinHID] RunReader: HidP_GetCaps failed");
+    HidD_FreePreparsedData(prep);
+    return;
+  }
 
   USHORT numBtnCaps = caps.NumberInputButtonCaps;
   std::vector<HIDP_BUTTON_CAPS> btnCaps(numBtnCaps ? numBtnCaps : 1);
-  if (numBtnCaps) HidP_GetButtonCaps(HidP_Input, btnCaps.data(), &numBtnCaps, prep);
+  if (numBtnCaps) {
+    NTSTATUS st = HidP_GetButtonCaps(HidP_Input, btnCaps.data(), &numBtnCaps, prep);
+    if (st != HIDP_STATUS_SUCCESS) {
+      dbg_printf("[WinHID] RunReader: HidP_GetButtonCaps failed: 0x%08X", (unsigned)st);
+      numBtnCaps = 0;
+    }
+  }
+  dbg_printf("[WinHID] RunReader: InLen=%u ButtonCaps=%u", caps.InputReportByteLength, numBtnCaps);
+  for (USHORT i = 0; i < numBtnCaps; ++i) {
+    const auto& bc = btnCaps[i];
+    dbg_printf("[WinHID]   Cap[%u]: ReportID=%u UsagePage=%u LinkCollection=%u IsRange=%u Min=%u Max=%u",
+               (unsigned)i, bc.ReportID, bc.UsagePage, bc.LinkCollection,
+               (unsigned)bc.IsRange,
+               bc.IsRange ? bc.Range.UsageMin : bc.NotRange.Usage,
+               bc.IsRange ? bc.Range.UsageMax : bc.NotRange.Usage);
+  }
 
-  // Prepare count upper bound for usages buffer
   ULONG maxUsages = 64;
   for (USHORT i = 0; i < numBtnCaps; ++i) {
     ULONG range = (btnCaps[i].IsRange)
@@ -227,6 +314,11 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
 
   OVERLAPPED ov{};
   ov.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+  if (!ov.hEvent) {
+    dbg_printf("[WinHID] RunReader: CreateEventW failed: %s", last_error_str().c_str());
+    HidD_FreePreparsedData(prep);
+    return;
+  }
 
   auto collectUsages = [&](const std::vector<BYTE>& src, std::unordered_set<USHORT>& out){
     for (USHORT i = 0; i < numBtnCaps; ++i) {
@@ -236,7 +328,7 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
 
       std::vector<BYTE> tmp(src);
       if (tmp.empty()) continue;
-      tmp[0] = bc.ReportID; // ensure the intended ReportID is selected
+      tmp[0] = bc.ReportID;
 
       ULONG cnt = bc.IsRange
         ? (ULONG)(bc.Range.UsageMax - bc.Range.UsageMin + 1)
@@ -246,7 +338,7 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
       NTSTATUS s = HidP_GetUsages(
         HidP_Input,
         bc.UsagePage,
-        bc.LinkCollection,           // match the collection
+        bc.LinkCollection,
         usages.data(),
         &cnt,
         prep,
@@ -255,6 +347,9 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
       );
       if (s == HIDP_STATUS_SUCCESS && cnt > 0) {
         for (ULONG k = 0; k < cnt; ++k) out.insert((USHORT)usages[k]);
+      } else if (g_debug) {
+        dbg_printf("[WinHID] RunReader: HidP_GetUsages failed for ReportID=%u Page=%u LC=%u: st=0x%08X",
+                   bc.ReportID, bc.UsagePage, bc.LinkCollection, (unsigned)s);
       }
     }
   };
@@ -266,21 +361,27 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     if (!ok) {
       DWORD err = GetLastError();
       if (err == ERROR_IO_PENDING) {
-        DWORD wait = WaitForSingleObject(ov.hEvent, 20); // poll at ~50 Hz
+        DWORD wait = WaitForSingleObject(ov.hEvent, 20);
         if (wait == WAIT_OBJECT_0) {
           GetOverlappedResult(L->handle, &ov, &bytesRead, FALSE);
         } else if (wait == WAIT_TIMEOUT) {
           continue;
         } else {
+          dbg_printf("[WinHID] RunReader: WaitForSingleObject error: %s", last_error_str(wait).c_str());
           break;
         }
       } else {
+        dbg_printf("[WinHID] RunReader: ReadFile error: %s", last_error_str(err).c_str());
         break;
       }
     } else {
       GetOverlappedResult(L->handle, &ov, &bytesRead, TRUE);
     }
     if (bytesRead == 0) continue;
+
+    if (g_debug) {
+      dbg_printf("[WinHID] RunReader: bytesRead=%lu reportID=%u", (unsigned long)bytesRead, (unsigned)(report.size() ? report[0] : 0));
+    }
 
     std::unordered_set<USHORT> pressed;
     std::unordered_set<USHORT> prevPressed;
@@ -294,6 +395,7 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     // Emits for presses
     for (auto u : pressed) {
       if (!prevPressed.count(u)) {
+        if (g_debug) dbg_printf("[WinHID] Emit press: usage=%u", u);
         L->tsfn.BlockingCall([L, u, now](Napi::Env env, Napi::Function cb){
           Napi::Object evt = Napi::Object::New(env);
           evt.Set("path", Napi::String::New(env, WinHID::WToU8(L->pathW)));
@@ -309,6 +411,7 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     // Emits for releases
     for (auto u : prevPressed) {
       if (!pressed.count(u)) {
+        if (g_debug) dbg_printf("[WinHID] Emit release: usage=%u", u);
         L->tsfn.BlockingCall([L, u, now](Napi::Env env, Napi::Function cb){
           Napi::Object evt = Napi::Object::New(env);
           evt.Set("path", Napi::String::New(env, WinHID::WToU8(L->pathW)));
@@ -327,6 +430,7 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
 
   if (ov.hEvent) CloseHandle(ov.hEvent);
   HidD_FreePreparsedData(prep);
+  dbg_printf("[WinHID] RunReader: exiting for %s", wstr_to_utf8(L->pathW).c_str());
 }
 
 // ---------- API: start/stop ----------
@@ -349,6 +453,8 @@ Napi::Value WinHID::StartListening(const Napi::CallbackInfo& info) {
     if (f.Has("usagePage"))  wantUsagePage = (USHORT)f.Get("usagePage").ToNumber().Uint32Value();
     if (f.Has("usage"))      wantUsage = (USHORT)f.Get("usage").ToNumber().Uint32Value();
   }
+  dbg_printf("[WinHID] StartListening: filter VID=0x%04X PID=0x%04X Page=%u Usage=%u",
+             wantVid, wantPid, wantUsagePage, wantUsage);
 
   GUID hidGuid; HidD_GetHidGuid(&hidGuid);
   HDEVINFO devInfo = SetupDiGetClassDevsW(&hidGuid, nullptr, nullptr, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
@@ -364,27 +470,41 @@ Napi::Value WinHID::StartListening(const Napi::CallbackInfo& info) {
     ++index;
     DWORD requiredSize = 0;
     SetupDiGetDeviceInterfaceDetailW(devInfo, &ifData, nullptr, 0, &requiredSize, nullptr);
-    if (GetLastError() != ERROR_INSUFFICIENT_BUFFER || requiredSize == 0) continue;
+    if (GetLastError() != ERROR_INSUFFICIENT_BUFFER || requiredSize == 0) {
+      dbg_printf("[WinHID] StartListening: detail size query failed at idx=%lu: %s", index-1, last_error_str().c_str());
+      continue;
+    }
     std::vector<BYTE> buffer(requiredSize);
     auto detail = reinterpret_cast<SP_DEVICE_INTERFACE_DETAIL_DATA_W*>(buffer.data());
     detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_W);
     SP_DEVINFO_DATA devData; devData.cbSize = sizeof(devData);
-    if (!SetupDiGetDeviceInterfaceDetailW(devInfo, &ifData, detail, requiredSize, nullptr, &devData)) continue;
+    if (!SetupDiGetDeviceInterfaceDetailW(devInfo, &ifData, detail, requiredSize, nullptr, &devData)) {
+      dbg_printf("[WinHID] StartListening: GetDeviceInterfaceDetail failed idx=%lu: %s", index-1, last_error_str().c_str());
+      continue;
+    }
 
     std::wstring pathW(detail->DevicePath);
+    std::string pathU8 = wstr_to_utf8(pathW);
     HANDLE h = INVALID_HANDLE_VALUE;
-    if (!OpenHid(pathW, h)) continue;
+    if (!OpenHid(pathW, h)) {
+      dbg_printf("[WinHID] StartListening: OpenHid failed for %s", pathU8.c_str());
+      continue;
+    }
 
     // best effort enlarge device queue
-    HidD_SetNumInputBuffers(h, 64);
+    if (!HidD_SetNumInputBuffers(h, 64)) {
+      if (g_debug) dbg_printf("[WinHID] StartListening: HidD_SetNumInputBuffers failed (non-fatal): %s", last_error_str().c_str());
+    }
 
-    // Filter via VID/PID if provided
     bool pass = true;
     if (wantVid || wantPid) {
       HIDD_ATTRIBUTES attrs; attrs.Size = sizeof(attrs);
       if (HidD_GetAttributes(h, &attrs)) {
+        dbg_printf("[WinHID] Device %s VID=0x%04X PID=0x%04X", pathU8.c_str(), attrs.VendorID, attrs.ProductID);
         if (wantVid && attrs.VendorID != wantVid) pass = false;
         if (wantPid && attrs.ProductID != wantPid) pass = false;
+      } else {
+        dbg_printf("[WinHID] StartListening: HidD_GetAttributes failed for %s", pathU8.c_str());
       }
     }
     USHORT usagePage=0, usage=0, inLen=0;
@@ -392,7 +512,11 @@ Napi::Value WinHID::StartListening(const Napi::CallbackInfo& info) {
     if (pass && wantUsagePage && usagePage != wantUsagePage) pass = false;
     if (pass && wantUsage && usage != wantUsage) pass = false;
 
-    if (!pass) { CloseHandle(h); continue; }
+    if (!pass) {
+      dbg_printf("[WinHID] StartListening: filter rejected %s (Page=%u Usage=%u)", pathU8.c_str(), usagePage, usage);
+      CloseHandle(h);
+      continue;
+    }
 
     auto L = std::make_shared<Listener>();
     L->pathW = pathW;
@@ -402,11 +526,11 @@ Napi::Value WinHID::StartListening(const Napi::CallbackInfo& info) {
     L->inputReportLen = inLen;
     L->prevReport.assign(inLen, 0);
 
-    // Create TSFN
-    L->tsfn = Napi::ThreadSafeFunction::New(
-      env, cb, "hid-button-listener", 0, 1);
+    L->tsfn = Napi::ThreadSafeFunction::New(env, cb, "hid-button-listener", 0, 1);
 
     std::string key = WToU8(pathW);
+    dbg_printf("[WinHID] StartListening: starting reader for %s (Page=%u Usage=%u InLen=%u)",
+               key.c_str(), usagePage, usage, inLen);
     L->th = std::thread([L]{ RunReader(L); });
 
     listeners_[key] = std::move(L);
@@ -417,6 +541,7 @@ Napi::Value WinHID::StartListening(const Napi::CallbackInfo& info) {
 }
 
 void WinHID::stopAll() {
+  dbg_printf("[WinHID] stopAll: stopping %zu listeners", listeners_.size());
   for (auto& kv : listeners_) {
     Listener* L = kv.second.get();
     if (!L) continue;
@@ -436,6 +561,7 @@ void WinHID::stopAll() {
     }
   }
   listeners_.clear();
+  dbg_printf("[WinHID] stopAll: done");
 }
 
 Napi::Value WinHID::StopListening(const Napi::CallbackInfo& info) {
