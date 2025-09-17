@@ -1,12 +1,27 @@
 {
-  "name": "win-hid",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+    "name": "win-hid",
+    "version": "1.0.0",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build": "cmake-js compile",
+        "start": "tsc && node dist/index.js"
+    },
+    "binary": {
+        "napi_versions": [
+            4
+        ]
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "description": "",
+    "devDependencies": {
+        "@types/node": "^24.5.1",
+        "typescript": "^5.9.2"
+    },
+    "dependencies": {
+        "cmake-js": "^7.3.1",
+        "node-addon-api": "^8.5.0"
+    }
 }

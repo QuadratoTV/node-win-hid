@@ -1,0 +1,3 @@
+C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/node-win-hid.dir
+C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/ZERO_CHECK.dir
