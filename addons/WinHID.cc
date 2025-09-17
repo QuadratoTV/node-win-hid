@@ -324,7 +324,6 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     for (USHORT i = 0; i < numBtnCaps; ++i) {
       const auto& bc = btnCaps[i];
       if (bc.ReportID == 0) continue;
-      if (L->usagePage && bc.UsagePage != L->usagePage) continue;
 
       std::vector<BYTE> tmp(src);
       if (tmp.empty()) continue;
