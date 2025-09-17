@@ -34,10 +34,28 @@ bool WinHID::OpenHid(const std::wstring& path, HANDLE& out) {
                          nullptr, OPEN_EXISTING,
                          FILE_FLAG_OVERLAPPED, nullptr);
   if (h == INVALID_HANDLE_VALUE) {
-    h = CreateFileW(path.c_str(), GENERIC_READ,
+    // try RW non-overlapped
+    h = CreateFileW(path.c_str(),
+                    GENERIC_READ | GENERIC_WRITE,
+                    FILE_SHARE_READ | FILE_SHARE_WRITE,
+                    nullptr, OPEN_EXISTING,
+                    0, nullptr);
+  }
+  if (h == INVALID_HANDLE_VALUE) {
+    // try RO overlapped
+    h = CreateFileW(path.c_str(),
+                    GENERIC_READ,
                     FILE_SHARE_READ | FILE_SHARE_WRITE,
                     nullptr, OPEN_EXISTING,
                     FILE_FLAG_OVERLAPPED, nullptr);
+  }
+  if (h == INVALID_HANDLE_VALUE) {
+    // try RO non-overlapped
+    h = CreateFileW(path.c_str(),
+                    GENERIC_READ,
+                    FILE_SHARE_READ | FILE_SHARE_WRITE,
+                    nullptr, OPEN_EXISTING,
+                    0, nullptr);
   }
   if (h == INVALID_HANDLE_VALUE) return false;
   out = h;
@@ -68,8 +86,6 @@ Napi::Function WinHID::GetClass(Napi::Env env) {
     InstanceMethod("stopListening", &WinHID::StopListening),
   });
 }
-
-
 
 Napi::Value WinHID::GetDevices(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
@@ -212,6 +228,37 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
   OVERLAPPED ov{};
   ov.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 
+  auto collectUsages = [&](const std::vector<BYTE>& src, std::unordered_set<USHORT>& out){
+    for (USHORT i = 0; i < numBtnCaps; ++i) {
+      const auto& bc = btnCaps[i];
+      if (bc.ReportID == 0) continue;
+      if (L->usagePage && bc.UsagePage != L->usagePage) continue;
+
+      std::vector<BYTE> tmp(src);
+      if (tmp.empty()) continue;
+      tmp[0] = bc.ReportID; // ensure the intended ReportID is selected
+
+      ULONG cnt = bc.IsRange
+        ? (ULONG)(bc.Range.UsageMax - bc.Range.UsageMin + 1)
+        : 32UL;
+      std::vector<USAGE> usages(cnt);
+
+      NTSTATUS s = HidP_GetUsages(
+        HidP_Input,
+        bc.UsagePage,
+        bc.LinkCollection,           // match the collection
+        usages.data(),
+        &cnt,
+        prep,
+        (PCHAR)tmp.data(),
+        (ULONG)tmp.size()
+      );
+      if (s == HIDP_STATUS_SUCCESS && cnt > 0) {
+        for (ULONG k = 0; k < cnt; ++k) out.insert((USHORT)usages[k]);
+      }
+    }
+  };
+
   while (!L->stop.load()) {
     DWORD bytesRead = 0;
     ResetEvent(ov.hEvent);
@@ -219,7 +266,7 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     if (!ok) {
       DWORD err = GetLastError();
       if (err == ERROR_IO_PENDING) {
-        DWORD wait = WaitForSingleObject(ov.hEvent, 20); // poll at 20ms
+        DWORD wait = WaitForSingleObject(ov.hEvent, 20); // poll at ~50 Hz
         if (wait == WAIT_OBJECT_0) {
           GetOverlappedResult(L->handle, &ov, &bytesRead, FALSE);
         } else if (wait == WAIT_TIMEOUT) {
@@ -235,47 +282,11 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     }
     if (bytesRead == 0) continue;
 
-    // Collect pressed buttons
     std::unordered_set<USHORT> pressed;
-    for (USHORT i = 0; i < numBtnCaps; ++i) {
-      if (btnCaps[i].UsagePage != 0 && L->usagePage && btnCaps[i].UsagePage != L->usagePage) continue;
-      ULONG cnt = maxUsages;
-      std::vector<USAGE> usages(cnt);
-      NTSTATUS s = HidP_GetUsages(HidP_Input,
-                                  btnCaps[i].UsagePage,
-                                  0,
-                                  usages.data(),
-                                  &cnt,
-                                  prep,
-                                  (PCHAR)report.data(),
-                                  (ULONG)report.size());
-      if (s == HIDP_STATUS_SUCCESS) {
-        for (ULONG k = 0; k < cnt; ++k) {
-          pressed.insert((USHORT)usages[k]);
-        }
-      }
-    }
-
-    // Diff with previous pressed set
     std::unordered_set<USHORT> prevPressed;
-    if (!lastReport.empty()) {
-      for (USHORT i = 0; i < numBtnCaps; ++i) {
-        if (btnCaps[i].UsagePage != 0 && L->usagePage && btnCaps[i].UsagePage != L->usagePage) continue;
-        ULONG cnt = maxUsages;
-        std::vector<USAGE> usages(cnt);
-        NTSTATUS s = HidP_GetUsages(HidP_Input,
-                                    btnCaps[i].UsagePage,
-                                    0,
-                                    usages.data(),
-                                    &cnt,
-                                    prep,
-                                    (PCHAR)lastReport.data(),
-                                    (ULONG)lastReport.size());
-        if (s == HIDP_STATUS_SUCCESS) {
-          for (ULONG k = 0; k < cnt; ++k) prevPressed.insert((USHORT)usages[k]);
-        }
-      }
-    }
+
+    collectUsages(report, pressed);
+    if (!lastReport.empty()) collectUsages(lastReport, prevPressed);
 
     const auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::system_clock::now().time_since_epoch()).count();
@@ -339,7 +350,6 @@ Napi::Value WinHID::StartListening(const Napi::CallbackInfo& info) {
     if (f.Has("usage"))      wantUsage = (USHORT)f.Get("usage").ToNumber().Uint32Value();
   }
 
-  // enumerate devices (reuse GetDevices logic but inline for perf)
   GUID hidGuid; HidD_GetHidGuid(&hidGuid);
   HDEVINFO devInfo = SetupDiGetClassDevsW(&hidGuid, nullptr, nullptr, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
   if (devInfo == INVALID_HANDLE_VALUE) {
@@ -350,7 +360,6 @@ Napi::Value WinHID::StartListening(const Napi::CallbackInfo& info) {
   DWORD index = 0;
   SP_DEVICE_INTERFACE_DATA ifData; ifData.cbSize = sizeof(ifData);
 
-  // ThreadSafeFunction shared across listeners? Use per-listener to keep life cycle simple.
   while (SetupDiEnumDeviceInterfaces(devInfo, nullptr, &hidGuid, index, &ifData)) {
     ++index;
     DWORD requiredSize = 0;
@@ -365,6 +374,9 @@ Napi::Value WinHID::StartListening(const Napi::CallbackInfo& info) {
     std::wstring pathW(detail->DevicePath);
     HANDLE h = INVALID_HANDLE_VALUE;
     if (!OpenHid(pathW, h)) continue;
+
+    // best effort enlarge device queue
+    HidD_SetNumInputBuffers(h, 64);
 
     // Filter via VID/PID if provided
     bool pass = true;
@@ -395,10 +407,8 @@ Napi::Value WinHID::StartListening(const Napi::CallbackInfo& info) {
       env, cb, "hid-button-listener", 0, 1);
 
     std::string key = WToU8(pathW);
-    // Start thread first so L stays alive via shared_ptr captured by lambda.
     L->th = std::thread([L]{ RunReader(L); });
 
-    // Put into map with unique_ptr to manage lifetime; also keep handle for stop
     listeners_[key] = std::move(L);
   }
 
