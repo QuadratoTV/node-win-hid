@@ -1,13 +1,24 @@
-import { WinHID } from "./bindings";
+const addon = require('../build/node-win-hid.node') as {
+  WinHID: new () => {
+    getDevices(): Array<{
+      path: string; vendorId: number; productId: number;
+      usagePage: number; usage: number;
+      manufacturer?: string; product?: string; serialNumber?: string;
+    }>;
+    startListening(
+      filterOrCb?: {
+        vendorId?: number; productId?: number; usagePage?: number; usage?: number;
+      } | ((evt: {
+        path: string; usagePage: number; usage: number;
+        button: number; pressed: boolean; timestamp: number;
+      }) => void),
+      cb?: (evt: {
+        path: string; usagePage: number; usage: number;
+        button: number; pressed: boolean; timestamp: number;
+      }) => void
+    ): void;
+    stopListening(): void;
+  };
+};
 
-if (WinHID) {
-  const hid = new WinHID();
-  const devices = hid.getDevices().filter(d => d.usage == 4 && d.usagePage == 1);
-  console.log(devices);
-
-  hid.startListening({ usagePage: 1, usage: 4 }, (evt) => console.log(evt));
-
-  setTimeout(() => {
-    hid.stopListening();
-  }, 20000);
-}
+export const WinHID = addon.WinHID;

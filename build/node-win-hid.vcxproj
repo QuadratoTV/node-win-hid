@@ -405,8 +405,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="C:\Users\schne\IdeaProjects\node-win-hid\addons\MyObject.cc" />
-    <ClInclude Include="C:\Users\schne\IdeaProjects\node-win-hid\addons\MyObject.h" />
     <ClCompile Include="C:\Users\schne\IdeaProjects\node-win-hid\addons\WinHID.cc" />
     <ClInclude Include="C:\Users\schne\IdeaProjects\node-win-hid\addons\WinHID.h" />
     <ClCompile Include="C:\Users\schne\IdeaProjects\node-win-hid\node_modules\cmake-js\lib\cpp\win_delay_load_hook.cc" />
