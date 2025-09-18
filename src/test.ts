@@ -1,4 +1,4 @@
-import { WinHID } from "./bindings";
+import { WinHID } from "./index";
 
 if (WinHID) {
   const hid = new WinHID();

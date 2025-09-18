@@ -5,7 +5,8 @@
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
         "build": "cmake-js compile",
-        "start": "tsc && cross-env WINHID_DEBUG=1 node dist/index.js"
+        "start": "tsc && cross-env WINHID_DEBUG=1 node dist/index.js",
+        "compile": "tsc"
     },
     "binary": {
         "napi_versions": [
