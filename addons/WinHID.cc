@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <setupapi.h>
 #include <hidsdi.h>
+#include <hidusage.h>
 #include <cfgmgr32.h>
 #include <initguid.h>
 #include <devpkey.h>
@@ -493,6 +494,7 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
   auto collectUsages = [&](const std::vector<BYTE>& src, std::unordered_set<USHORT>& out){
     for (USHORT i = 0; i < numBtnCaps; ++i) {
       const auto& bc = btnCaps[i];
+      if (bc.UsagePage != HID_USAGE_PAGE_BUTTON) continue;
       if (bc.ReportID == 0) continue;
 
       std::vector<BYTE> tmp(src);
