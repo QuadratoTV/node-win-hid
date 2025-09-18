@@ -294,6 +294,7 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
   dbg_printf("[WinHID] RunReader: InLen=%u ButtonCaps=%u", caps.InputReportByteLength, numBtnCaps);
   for (USHORT i = 0; i < numBtnCaps; ++i) {
     const auto& bc = btnCaps[i];
+    if (bc.UsagePage != HID_USAGE_PAGE_BUTTON) continue; // skip non-button
     dbg_printf("[WinHID]   Cap[%u]: ReportID=%u UsagePage=%u LinkCollection=%u IsRange=%u Min=%u Max=%u",
                (unsigned)i, bc.ReportID, bc.UsagePage, bc.LinkCollection,
                (unsigned)bc.IsRange,
