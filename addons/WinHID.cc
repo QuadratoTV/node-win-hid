@@ -11,6 +11,8 @@
 #include <mutex>
 #include <cstdarg>
 #include <cstdio>
+#include <devpkey.h>
+#include <initguid.h>
 
 #pragma comment(lib, "setupapi.lib")
 #pragma comment(lib, "hid.lib")
@@ -103,6 +105,90 @@ static void dump_all_button_caps(PHIDP_PREPARSED_DATA prep){
     if (HidP_GetButtonCaps(HidP_Feature, v.data(), &n, prep) == HIDP_STATUS_SUCCESS) {
       for (USHORT i = 0; i < n; ++i) dump_button_cap(v[i], "FEATURE");
     }
+  }
+}
+
+static std::string guid_to_str(const GUID& g){
+  char b[64];
+  _snprintf_s(b, sizeof(b), _TRUNCATE,
+    "{%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}",
+    g.Data1, g.Data2, g.Data3,
+    g.Data4[0], g.Data4[1], g.Data4[2], g.Data4[3], g.Data4[4], g.Data4[5], g.Data4[6], g.Data4[7]);
+  return b;
+}
+
+static bool get_container_id(HDEVINFO di, const SP_DEVINFO_DATA& dd, std::string& out){
+  DEVPROPTYPE type = 0;
+  GUID gid{};
+  DWORD sz = 0;
+  if (!SetupDiGetDevicePropertyW(di, const_cast<SP_DEVINFO_DATA*>(&dd),
+        &DEVPKEY_Device_ContainerId, &type, (PBYTE)&gid, sizeof(gid), &sz, 0))
+    return false;
+  if (type != DEVPROP_TYPE_GUID) return false;
+  out = guid_to_str(gid);
+  return true;
+}
+
+static std::string get_devinst_id(const SP_DEVINFO_DATA& dd){
+  wchar_t id[512]; ULONG len = 0;
+  if (CM_Get_Device_IDW(dd.DevInst, id, 512, 0) == CR_SUCCESS) return wstr_to_utf8(id);
+  return {};
+}
+
+static std::string make_device_key(const std::string& containerId,
+                                   USHORT vid, USHORT pid,
+                                   const std::string& serial){
+  char b[256];
+  _snprintf_s(b, sizeof(b), _TRUNCATE, "CID=%s VID=0x%04X PID=0x%04X SN=%s",
+              containerId.empty() ? "-" : containerId.c_str(),
+              vid, pid,
+              serial.empty() ? "-" : serial.c_str());
+  return b;
+}
+
+// keyed dumps
+static void dump_caps_k(const std::string& key, const HIDP_CAPS& c){
+  dbg_printf("[HID %s] CAPS: UsagePage=%u Usage=%u InputReportByteLength=%u OutputReportByteLength=%u FeatureReportByteLength=%u NumberLinkCollectionNodes=%u NumberInputButtonCaps=%u NumberInputValueCaps=%u NumberInputDataIndices=%u NumberOutputButtonCaps=%u NumberOutputValueCaps=%u NumberOutputDataIndices=%u NumberFeatureButtonCaps=%u NumberFeatureValueCaps=%u NumberFeatureDataIndices=%u",
+             key.c_str(), c.UsagePage, c.Usage,
+             c.InputReportByteLength, c.OutputReportByteLength, c.FeatureReportByteLength,
+             c.NumberLinkCollectionNodes,
+             c.NumberInputButtonCaps, c.NumberInputValueCaps, c.NumberInputDataIndices,
+             c.NumberOutputButtonCaps, c.NumberOutputValueCaps, c.NumberOutputDataIndices,
+             c.NumberFeatureButtonCaps, c.NumberFeatureValueCaps, c.NumberFeatureDataIndices);
+}
+
+static void dump_button_cap_k(const std::string& key, const char* kind, const HIDP_BUTTON_CAPS& bc){
+  if (bc.IsRange) {
+    dbg_printf("[HID %s] %s BUTTON_CAP: ReportID=%u UsagePage=%u LinkCollection=%u IsAlias=%u IsRange=1 UsageMin=%u UsageMax=%u StringMin=%u StringMax=%u DesignatorMin=%u DesignatorMax=%u DataIndexMin=%u DataIndexMax=%u IsAbsolute=%u",
+               key.c_str(), kind, bc.ReportID, bc.UsagePage, bc.LinkCollection, (unsigned)bc.IsAlias,
+               bc.Range.UsageMin, bc.Range.UsageMax, bc.Range.StringMin, bc.Range.StringMax,
+               bc.Range.DesignatorMin, bc.Range.DesignatorMax,
+               bc.Range.DataIndexMin, bc.Range.DataIndexMax, (unsigned)bc.IsAbsolute);
+  } else {
+    dbg_printf("[HID %s] %s BUTTON_CAP: ReportID=%u UsagePage=%u LinkCollection=%u IsAlias=%u IsRange=0 Usage=%u StringIndex=%u DesignatorIndex=%u DataIndex=%u IsAbsolute=%u",
+               key.c_str(), kind, bc.ReportID, bc.UsagePage, bc.LinkCollection, (unsigned)bc.IsAlias,
+               bc.NotRange.Usage, bc.NotRange.StringIndex, bc.NotRange.DesignatorIndex,
+               bc.NotRange.DataIndex, (unsigned)bc.IsAbsolute);
+  }
+}
+
+static void dump_all_button_caps_k(const std::string& key, PHIDP_PREPARSED_DATA prep){
+  USHORT n = 0;
+
+  n = 0; HidP_GetButtonCaps(HidP_Input, nullptr, &n, prep);
+  if (n){ std::vector<HIDP_BUTTON_CAPS> v(n);
+    if (HidP_GetButtonCaps(HidP_Input, v.data(), &n, prep) == HIDP_STATUS_SUCCESS)
+      for (USHORT i=0;i<n;++i) dump_button_cap_k(key, "INPUT", v[i]);
+  }
+  n = 0; HidP_GetButtonCaps(HidP_Output, nullptr, &n, prep);
+  if (n){ std::vector<HIDP_BUTTON_CAPS> v(n);
+    if (HidP_GetButtonCaps(HidP_Output, v.data(), &n, prep) == HIDP_STATUS_SUCCESS)
+      for (USHORT i=0;i<n;++i) dump_button_cap_k(key, "OUTPUT", v[i]);
+  }
+  n = 0; HidP_GetButtonCaps(HidP_Feature, nullptr, &n, prep);
+  if (n){ std::vector<HIDP_BUTTON_CAPS> v(n);
+    if (HidP_GetButtonCaps(HidP_Feature, v.data(), &n, prep) == HIDP_STATUS_SUCCESS)
+      for (USHORT i=0;i<n;++i) dump_button_cap_k(key, "FEATURE", v[i]);
   }
 }
 
@@ -275,6 +361,15 @@ Napi::Value WinHID::GetDevices(const Napi::CallbackInfo& info) {
     USHORT usagePage = 0, usage = 0;
     std::string manufacturer, product, serial;
 
+      std::string containerId;
+      if (!get_container_id(devInfo, devData, containerId)) {
+        // fallback to DevInst ID
+        containerId = get_devinst_id(devData);
+      }
+
+      // compute key once per interface node
+      const std::string deviceKey = make_device_key(containerId, vid, pid, serial);
+
     if (h != INVALID_HANDLE_VALUE) {
       HIDD_ATTRIBUTES attrs;
       attrs.Size = sizeof(attrs);
@@ -292,8 +387,8 @@ Napi::Value WinHID::GetDevices(const Napi::CallbackInfo& info) {
           usagePage = caps.UsagePage;
           usage = caps.Usage;
           
-          dump_caps(caps);
-          dump_all_button_caps(prep);
+          dump_caps_k(deviceKey, caps);
+          dump_all_button_caps_k(deviceKey, prep);
         } else {
           dbg_printf("[WinHID] GetDevices: HidP_GetCaps failed for %s", devicePath.c_str());
         }
@@ -324,6 +419,8 @@ Napi::Value WinHID::GetDevices(const Napi::CallbackInfo& info) {
     dev.Set("productId", Napi::Number::New(env, pid));
     dev.Set("usagePage", Napi::Number::New(env, usagePage));
     dev.Set("usage", Napi::Number::New(env, usage));
+    dev.Set("deviceKey", Napi::String::New(env, deviceKey));
+    dev.Set("containerId", Napi::String::New(env, containerId)); // optional but useful
     if (!manufacturer.empty()) dev.Set("manufacturer", Napi::String::New(env, manufacturer));
     if (!product.empty())      dev.Set("product", Napi::String::New(env, product));
     if (!serial.empty())       dev.Set("serialNumber", Napi::String::New(env, serial));
