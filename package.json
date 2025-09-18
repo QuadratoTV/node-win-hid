@@ -1,10 +1,10 @@
 {
     "name": "win-hid",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
+        "test": "tsc && cross-env WINHID_DEBUG=1 node dist/test.js",
         "build": "cmake-js compile",
         "start": "tsc && cross-env WINHID_DEBUG=1 node dist/index.js",
         "compile": "tsc"
