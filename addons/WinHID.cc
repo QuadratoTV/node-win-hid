@@ -42,6 +42,70 @@ static void dbg_printf(const char* fmt, ...) {
   OutputDebugStringA("\n");
 }
 
+static const char* tf(BOOLEAN b){ return b ? "1" : "0"; }
+
+static void dump_caps(const HIDP_CAPS& c){
+  dbg_printf("[WinHID] CAPS:"
+             " UsagePage=%u Usage=%u"
+             " InputReportByteLength=%u OutputReportByteLength=%u FeatureReportByteLength=%u"
+             " NumberLinkCollectionNodes=%u"
+             " NumberInputButtonCaps=%u NumberInputValueCaps=%u NumberInputDataIndices=%u"
+             " NumberOutputButtonCaps=%u NumberOutputValueCaps=%u NumberOutputDataIndices=%u"
+             " NumberFeatureButtonCaps=%u NumberFeatureValueCaps=%u NumberFeatureDataIndices=%u",
+             c.UsagePage, c.Usage,
+             c.InputReportByteLength, c.OutputReportByteLength, c.FeatureReportByteLength,
+             c.NumberLinkCollectionNodes,
+             c.NumberInputButtonCaps, c.NumberInputValueCaps, c.NumberInputDataIndices,
+             c.NumberOutputButtonCaps, c.NumberOutputValueCaps, c.NumberOutputDataIndices,
+             c.NumberFeatureButtonCaps, c.NumberFeatureValueCaps, c.NumberFeatureDataIndices);
+}
+
+static void dump_button_cap(const HIDP_BUTTON_CAPS& bc, const char* kind){
+  if (bc.IsRange) {
+    dbg_printf("[WinHID] %s BUTTON_CAP: ReportID=%u UsagePage=%u LinkCollection=%u IsAlias=%s IsRange=1 "
+               "UsageMin=%u UsageMax=%u StringMin=%u StringMax=%u DesignatorMin=%u DesignatorMax=%u "
+               "DataIndexMin=%u DataIndexMax=%u IsAbsolute=%s",
+               kind, bc.ReportID, bc.UsagePage, bc.LinkCollection, tf(bc.IsAlias),
+               bc.Range.UsageMin, bc.Range.UsageMax, bc.Range.StringMin, bc.Range.StringMax,
+               bc.Range.DesignatorMin, bc.Range.DesignatorMax,
+               bc.Range.DataIndexMin, bc.Range.DataIndexMax, tf(bc.IsAbsolute));
+  } else {
+    dbg_printf("[WinHID] %s BUTTON_CAP: ReportID=%u UsagePage=%u LinkCollection=%u IsAlias=%s IsRange=0 "
+               "Usage=%u StringIndex=%u DesignatorIndex=%u DataIndex=%u IsAbsolute=%s",
+               kind, bc.ReportID, bc.UsagePage, bc.LinkCollection, tf(bc.IsAlias),
+               bc.NotRange.Usage, bc.NotRange.StringIndex, bc.NotRange.DesignatorIndex,
+               bc.NotRange.DataIndex, tf(bc.IsAbsolute));
+  }
+}
+
+static void dump_all_button_caps(PHIDP_PREPARSED_DATA prep){
+  // Input
+  USHORT n = 0;
+  HidP_GetButtonCaps(HidP_Input, nullptr, &n, prep);
+  if (n) {
+    std::vector<HIDP_BUTTON_CAPS> v(n);
+    if (HidP_GetButtonCaps(HidP_Input, v.data(), &n, prep) == HIDP_STATUS_SUCCESS) {
+      for (USHORT i = 0; i < n; ++i) dump_button_cap(v[i], "INPUT");
+    }
+  }
+  // Output
+  n = 0; HidP_GetButtonCaps(HidP_Output, nullptr, &n, prep);
+  if (n) {
+    std::vector<HIDP_BUTTON_CAPS> v(n);
+    if (HidP_GetButtonCaps(HidP_Output, v.data(), &n, prep) == HIDP_STATUS_SUCCESS) {
+      for (USHORT i = 0; i < n; ++i) dump_button_cap(v[i], "OUTPUT");
+    }
+  }
+  // Feature
+  n = 0; HidP_GetButtonCaps(HidP_Feature, nullptr, &n, prep);
+  if (n) {
+    std::vector<HIDP_BUTTON_CAPS> v(n);
+    if (HidP_GetButtonCaps(HidP_Feature, v.data(), &n, prep) == HIDP_STATUS_SUCCESS) {
+      for (USHORT i = 0; i < n; ++i) dump_button_cap(v[i], "FEATURE");
+    }
+  }
+}
+
 static std::string last_error_str(DWORD err = GetLastError()) {
   LPSTR msg = nullptr;
   DWORD len = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -121,11 +185,14 @@ bool WinHID::GetCaps(HANDLE h, USHORT& usagePage, USHORT& usage, USHORT& inLen) 
     HidD_FreePreparsedData(prep);
     return false;
   }
+
   usagePage = caps.UsagePage;
   usage = caps.Usage;
   inLen = caps.InputReportByteLength;
-  dbg_printf("[WinHID] GetCaps: UsagePage=%u Usage=%u InLen=%u BtnCaps=%u",
-             usagePage, usage, inLen, caps.NumberInputButtonCaps);
+
+  dump_caps(caps);
+  dump_all_button_caps(prep);
+
   HidD_FreePreparsedData(prep);
   return inLen > 0;
 }
@@ -224,6 +291,9 @@ Napi::Value WinHID::GetDevices(const Napi::CallbackInfo& info) {
         if (HidP_GetCaps(prep, &caps) == HIDP_STATUS_SUCCESS) {
           usagePage = caps.UsagePage;
           usage = caps.Usage;
+          
+          dump_caps(caps);
+          dump_all_button_caps(prep);
         } else {
           dbg_printf("[WinHID] GetDevices: HidP_GetCaps failed for %s", devicePath.c_str());
         }
@@ -380,7 +450,7 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     if (bytesRead == 0) continue;
 
     if (g_debug) {
-      dbg_printf("[WinHID] RunReader: bytesRead=%lu reportID=%u", (unsigned long)bytesRead, (unsigned)(report.size() ? report[0] : 0));
+      // dbg_printf("[WinHID] RunReader: bytesRead=%lu reportID=%u", (unsigned long)bytesRead, (unsigned)(report.size() ? report[0] : 0));
     }
 
     std::unordered_set<USHORT> pressed;
