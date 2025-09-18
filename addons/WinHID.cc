@@ -5,17 +5,18 @@
 #include <setupapi.h>
 #include <hidsdi.h>
 #include <cfgmgr32.h>
+#include <initguid.h>
+#include <devpkey.h>
 #include <vector>
 #include <unordered_set>
 #include <chrono>
 #include <mutex>
 #include <cstdarg>
 #include <cstdio>
-#include <devpkey.h>
-#include <initguid.h>
 
 #pragma comment(lib, "setupapi.lib")
 #pragma comment(lib, "hid.lib")
+#pragma comment(lib, "cfgmgr32.lib")
 
 // ---------- debug helpers ----------
 static bool g_debug_inited = false;
@@ -43,6 +44,18 @@ static void dbg_printf(const char* fmt, ...) {
   OutputDebugStringA(buf);
   OutputDebugStringA("\n");
 }
+
+// ---------- helpers ----------
+static std::string wstr_to_utf8(const wchar_t* w) {
+  if (!w) return {};
+  int len = WideCharToMultiByte(CP_UTF8, 0, w, -1, nullptr, 0, nullptr, nullptr);
+  if (len <= 0) return {};
+  std::string s(len - 1, '\0');
+  WideCharToMultiByte(CP_UTF8, 0, w, -1, s.data(), len, nullptr, nullptr);
+  return s;
+}
+
+static std::string wstr_to_utf8(const std::wstring& w) { return wstr_to_utf8(w.c_str()); }
 
 static const char* tf(BOOLEAN b){ return b ? "1" : "0"; }
 
@@ -200,17 +213,6 @@ static std::string last_error_str(DWORD err = GetLastError()) {
   if (msg) LocalFree(msg);
   return s;
 }
-
-// ---------- helpers ----------
-static std::string wstr_to_utf8(const wchar_t* w) {
-  if (!w) return {};
-  int len = WideCharToMultiByte(CP_UTF8, 0, w, -1, nullptr, 0, nullptr, nullptr);
-  if (len <= 0) return {};
-  std::string s(len - 1, '\0');
-  WideCharToMultiByte(CP_UTF8, 0, w, -1, s.data(), len, nullptr, nullptr);
-  return s;
-}
-static std::string wstr_to_utf8(const std::wstring& w) { return wstr_to_utf8(w.c_str()); }
 
 std::string WinHID::WToU8(const wchar_t* w){ return wstr_to_utf8(w); }
 std::string WinHID::WToU8(const std::wstring& w){ return wstr_to_utf8(w); }

@@ -10,7 +10,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_JS_INC})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_JS_LIB})
 if (WIN32)
-  target_link_libraries(${PROJECT_NAME} PRIVATE setupapi hid)
+  target_link_libraries(${PROJECT_NAME} PRIVATE setupapi hid cfgmgr32)
 endif()
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 

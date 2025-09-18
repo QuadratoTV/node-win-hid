@@ -105,7 +105,7 @@ events:
       The output was:
       0
       MSBuild version 17.13.9+e0f243f1e for .NET Framework
-      Build started 18/09/2025 11:48:07.
+      Build started 19/09/2025 00:20:26.
       
       Project "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\4.1.1\\CompilerIdC\\CompilerIdC.vcxproj" on node 1 (default targets).
       PrepareForBuild:
@@ -139,7 +139,7 @@ events:
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:02.10
+      Time Elapsed 00:00:01.09
       
       
       Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
@@ -1138,7 +1138,7 @@ events:
       The output was:
       0
       MSBuild version 17.13.9+e0f243f1e for .NET Framework
-      Build started 18/09/2025 11:48:09.
+      Build started 19/09/2025 00:20:28.
       
       Project "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\4.1.1\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
       PrepareForBuild:
@@ -1172,7 +1172,7 @@ events:
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:01.01
+      Time Elapsed 00:00:00.95
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -1596,8 +1596,8 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-h4kzn3"
-      binary: "C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-h4kzn3"
+      source: "C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-bgivc6"
+      binary: "C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-bgivc6"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Ob0 /Od /RTC1"
@@ -1607,45 +1607,45 @@ events:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-h4kzn3'
+        Change Dir: 'C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-bgivc6'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_d7678.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_ef32c.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.13.9+e0f243f1e for .NET Framework
-        Build started 18/09/2025 11:48:10.
+        Build started 19/09/2025 00:20:29.
         
-        Project "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-h4kzn3\\cmTC_d7678.vcxproj" on node 1 (default targets).
+        Project "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-bgivc6\\cmTC_ef32c.vcxproj" on node 1 (default targets).
         PrepareForBuild:
-          Creating directory "cmTC_d7678.dir\\Debug\\".
+          Creating directory "cmTC_ef32c.dir\\Debug\\".
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-h4kzn3\\Debug\\".
-          Creating directory "cmTC_d7678.dir\\Debug\\cmTC_d7678.tlog\\".
+          Creating directory "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-bgivc6\\Debug\\".
+          Creating directory "cmTC_ef32c.dir\\Debug\\cmTC_ef32c.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_d7678.dir\\Debug\\cmTC_d7678.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_d7678.dir\\Debug\\cmTC_d7678.tlog\\unsuccessfulbuild".
+          Creating "cmTC_ef32c.dir\\Debug\\cmTC_ef32c.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_ef32c.dir\\Debug\\cmTC_ef32c.tlog\\unsuccessfulbuild".
         VcpkgTripletSelection:
           Using triplet "x64-windows" from "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\"
           Using normalized configuration "Debug"
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX64\\x64\\CL.exe /c /I"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\include" /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MTd /GS /fp:precise /Fo"cmTC_d7678.dir\\Debug\\\\" /Fd"cmTC_d7678.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCCompilerABI.c"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX64\\x64\\CL.exe /c /I"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\include" /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MTd /GS /fp:precise /Fo"cmTC_ef32c.dir\\Debug\\\\" /Fd"cmTC_ef32c.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCCompilerABI.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.43.34808 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /I"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\include" /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MTd /GS /fp:precise /Fo"cmTC_d7678.dir\\Debug\\\\" /Fd"cmTC_d7678.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCCompilerABI.c"
+          cl /c /I"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\include" /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MTd /GS /fp:precise /Fo"cmTC_ef32c.dir\\Debug\\\\" /Fd"cmTC_ef32c.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCCompilerABI.c"
           CMakeCCompilerABI.c
         Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-h4kzn3\\Debug\\cmTC_d7678.exe" /INCREMENTAL /ILK:"cmTC_d7678.dir\\Debug\\cmTC_d7678.ilk" /NOLOGO /LIBPATH:"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\lib" /LIBPATH:"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\lib\\manual-link" kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\lib\\*.lib" /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-h4kzn3/Debug/cmTC_d7678.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-h4kzn3/Debug/cmTC_d7678.lib" /MACHINE:X64  /machine:x64 cmTC_d7678.dir\\Debug\\CMakeCCompilerABI.obj
-          cmTC_d7678.vcxproj -> C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-h4kzn3\\Debug\\cmTC_d7678.exe
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-bgivc6\\Debug\\cmTC_ef32c.exe" /INCREMENTAL /ILK:"cmTC_ef32c.dir\\Debug\\cmTC_ef32c.ilk" /NOLOGO /LIBPATH:"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\lib" /LIBPATH:"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\lib\\manual-link" kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\lib\\*.lib" /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-bgivc6/Debug/cmTC_ef32c.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-bgivc6/Debug/cmTC_ef32c.lib" /MACHINE:X64  /machine:x64 cmTC_ef32c.dir\\Debug\\CMakeCCompilerABI.obj
+          cmTC_ef32c.vcxproj -> C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-bgivc6\\Debug\\cmTC_ef32c.exe
         AppLocalFromInstalled:
-          pwsh.exe -ExecutionPolicy Bypass -noprofile -File "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\scripts\\buildsystems\\msbuild\\applocal.ps1" "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-h4kzn3\\Debug\\cmTC_d7678.exe" "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\bin" "cmTC_d7678.dir\\Debug\\cmTC_d7678.tlog\\cmTC_d7678.write.1u.tlog" "cmTC_d7678.dir\\Debug\\vcpkg.applocal.log"
+          pwsh.exe -ExecutionPolicy Bypass -noprofile -File "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\scripts\\buildsystems\\msbuild\\applocal.ps1" "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-bgivc6\\Debug\\cmTC_ef32c.exe" "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\bin" "cmTC_ef32c.dir\\Debug\\cmTC_ef32c.tlog\\cmTC_ef32c.write.1u.tlog" "cmTC_ef32c.dir\\Debug\\vcpkg.applocal.log"
         FinalizeBuildStatus:
-          Deleting file "cmTC_d7678.dir\\Debug\\cmTC_d7678.tlog\\unsuccessfulbuild".
-          Touching "cmTC_d7678.dir\\Debug\\cmTC_d7678.tlog\\cmTC_d7678.lastbuildstate".
-        Done Building Project "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-h4kzn3\\cmTC_d7678.vcxproj" (default targets).
+          Deleting file "cmTC_ef32c.dir\\Debug\\cmTC_ef32c.tlog\\unsuccessfulbuild".
+          Touching "cmTC_ef32c.dir\\Debug\\cmTC_ef32c.tlog\\cmTC_ef32c.lastbuildstate".
+        Done Building Project "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-bgivc6\\cmTC_ef32c.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:02.59
+        Time Elapsed 00:00:01.19
         
       exitCode: 0
   -
@@ -1685,8 +1685,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-4r0dsy"
-      binary: "C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-4r0dsy"
+      source: "C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-0z709i"
+      binary: "C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-0z709i"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Ob0 /Od /RTC1"
@@ -1697,45 +1697,45 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-4r0dsy'
+        Change Dir: 'C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-0z709i'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_7a699.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_41e55.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.13.9+e0f243f1e for .NET Framework
-        Build started 18/09/2025 11:48:13.
+        Build started 19/09/2025 00:20:30.
         
-        Project "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4r0dsy\\cmTC_7a699.vcxproj" on node 1 (default targets).
+        Project "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0z709i\\cmTC_41e55.vcxproj" on node 1 (default targets).
         PrepareForBuild:
-          Creating directory "cmTC_7a699.dir\\Debug\\".
+          Creating directory "cmTC_41e55.dir\\Debug\\".
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4r0dsy\\Debug\\".
-          Creating directory "cmTC_7a699.dir\\Debug\\cmTC_7a699.tlog\\".
+          Creating directory "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0z709i\\Debug\\".
+          Creating directory "cmTC_41e55.dir\\Debug\\cmTC_41e55.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_7a699.dir\\Debug\\cmTC_7a699.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_7a699.dir\\Debug\\cmTC_7a699.tlog\\unsuccessfulbuild".
+          Creating "cmTC_41e55.dir\\Debug\\cmTC_41e55.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_41e55.dir\\Debug\\cmTC_41e55.tlog\\unsuccessfulbuild".
         VcpkgTripletSelection:
           Using triplet "x64-windows" from "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\"
           Using normalized configuration "Debug"
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX64\\x64\\CL.exe /c /I"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\include" /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MTd /GS /fp:precise /Fo"cmTC_7a699.dir\\Debug\\\\" /Fd"cmTC_7a699.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCXXCompilerABI.cpp"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX64\\x64\\CL.exe /c /I"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\include" /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MTd /GS /fp:precise /Fo"cmTC_41e55.dir\\Debug\\\\" /Fd"cmTC_41e55.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCXXCompilerABI.cpp"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.43.34808 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /I"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\include" /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MTd /GS /fp:precise /Fo"cmTC_7a699.dir\\Debug\\\\" /Fd"cmTC_7a699.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /I"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\include" /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MTd /GS /fp:precise /Fo"cmTC_41e55.dir\\Debug\\\\" /Fd"cmTC_41e55.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCXXCompilerABI.cpp"
           CMakeCXXCompilerABI.cpp
         Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4r0dsy\\Debug\\cmTC_7a699.exe" /INCREMENTAL /ILK:"cmTC_7a699.dir\\Debug\\cmTC_7a699.ilk" /NOLOGO /LIBPATH:"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\lib" /LIBPATH:"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\lib\\manual-link" kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\lib\\*.lib" /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-4r0dsy/Debug/cmTC_7a699.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-4r0dsy/Debug/cmTC_7a699.lib" /MACHINE:X64  /machine:x64 cmTC_7a699.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_7a699.vcxproj -> C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4r0dsy\\Debug\\cmTC_7a699.exe
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.43.34808\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0z709i\\Debug\\cmTC_41e55.exe" /INCREMENTAL /ILK:"cmTC_41e55.dir\\Debug\\cmTC_41e55.ilk" /NOLOGO /LIBPATH:"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\lib" /LIBPATH:"C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\lib\\manual-link" kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\lib\\*.lib" /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-0z709i/Debug/cmTC_41e55.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/schne/IdeaProjects/node-win-hid/build/CMakeFiles/CMakeScratch/TryCompile-0z709i/Debug/cmTC_41e55.lib" /MACHINE:X64  /machine:x64 cmTC_41e55.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_41e55.vcxproj -> C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0z709i\\Debug\\cmTC_41e55.exe
         AppLocalFromInstalled:
-          pwsh.exe -ExecutionPolicy Bypass -noprofile -File "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\scripts\\buildsystems\\msbuild\\applocal.ps1" "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4r0dsy\\Debug\\cmTC_7a699.exe" "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\bin" "cmTC_7a699.dir\\Debug\\cmTC_7a699.tlog\\cmTC_7a699.write.1u.tlog" "cmTC_7a699.dir\\Debug\\vcpkg.applocal.log"
+          pwsh.exe -ExecutionPolicy Bypass -noprofile -File "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\scripts\\buildsystems\\msbuild\\applocal.ps1" "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0z709i\\Debug\\cmTC_41e55.exe" "C:\\Users\\schne\\source\\repos\\LFM-App-Dll\\LFM-App-Dll\\vcpkg\\installed\\x64-windows\\debug\\bin" "cmTC_41e55.dir\\Debug\\cmTC_41e55.tlog\\cmTC_41e55.write.1u.tlog" "cmTC_41e55.dir\\Debug\\vcpkg.applocal.log"
         FinalizeBuildStatus:
-          Deleting file "cmTC_7a699.dir\\Debug\\cmTC_7a699.tlog\\unsuccessfulbuild".
-          Touching "cmTC_7a699.dir\\Debug\\cmTC_7a699.tlog\\cmTC_7a699.lastbuildstate".
-        Done Building Project "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4r0dsy\\cmTC_7a699.vcxproj" (default targets).
+          Deleting file "cmTC_41e55.dir\\Debug\\cmTC_41e55.tlog\\unsuccessfulbuild".
+          Touching "cmTC_41e55.dir\\Debug\\cmTC_41e55.tlog\\cmTC_41e55.lastbuildstate".
+        Done Building Project "C:\\Users\\schne\\IdeaProjects\\node-win-hid\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0z709i\\cmTC_41e55.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.98
+        Time Elapsed 00:00:00.96
         
       exitCode: 0
   -
