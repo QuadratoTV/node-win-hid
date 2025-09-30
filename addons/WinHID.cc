@@ -10,6 +10,7 @@
 #include <devpkey.h>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 #include <chrono>
 #include <mutex>
 #include <cstdarg>
@@ -364,14 +365,14 @@ Napi::Value WinHID::GetDevices(const Napi::CallbackInfo& info) {
     USHORT usagePage = 0, usage = 0;
     std::string manufacturer, product, serial;
 
-      std::string containerId;
-      if (!get_container_id(devInfo, devData, containerId)) {
-        // fallback to DevInst ID
-        containerId = get_devinst_id(devData);
-      }
+    std::string containerId;
+    if (!get_container_id(devInfo, devData, containerId)) {
+      // fallback to DevInst ID
+      containerId = get_devinst_id(devData);
+    }
 
-      // compute key once per interface node
-      const std::string deviceKey = make_device_key(containerId, vid, pid, serial);
+    // compute key once per interface node
+    const std::string deviceKey = make_device_key(containerId, vid, pid, serial);
 
     if (h != INVALID_HANDLE_VALUE) {
       HIDD_ATTRIBUTES attrs;
@@ -389,7 +390,7 @@ Napi::Value WinHID::GetDevices(const Napi::CallbackInfo& info) {
         if (HidP_GetCaps(prep, &caps) == HIDP_STATUS_SUCCESS) {
           usagePage = caps.UsagePage;
           usage = caps.Usage;
-          
+
           dump_caps_k(deviceKey, caps);
           dump_all_button_caps_k(deviceKey, prep);
         } else {
@@ -465,23 +466,14 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
   for (USHORT i = 0; i < numBtnCaps; ++i) {
     const auto& bc = btnCaps[i];
     if (bc.UsagePage != HID_USAGE_PAGE_BUTTON) continue; // skip non-button
-    dbg_printf("[WinHID]   Cap[%u]: ReportID=%u UsagePage=%u LinkCollection=%u IsRange=%u Min=%u Max=%u",
-               (unsigned)i, bc.ReportID, bc.UsagePage, bc.LinkCollection,
-               (unsigned)bc.IsRange,
-               bc.IsRange ? bc.Range.UsageMin : bc.NotRange.Usage,
-               bc.IsRange ? bc.Range.UsageMax : bc.NotRange.Usage);
-  }
-
-  ULONG maxUsages = 64;
-  for (USHORT i = 0; i < numBtnCaps; ++i) {
-    ULONG range = (btnCaps[i].IsRange)
-      ? (btnCaps[i].Range.UsageMax - btnCaps[i].Range.UsageMin + 1)
-      : 1;
-    if (range > maxUsages) maxUsages = range;
+    dbg_printf("[WinHID]   Cap[%u]: ReportID=%u UsagePage=%u LinkCollection=%u IsRange=%u",
+               (unsigned)i, bc.ReportID, bc.UsagePage, bc.LinkCollection, (unsigned)bc.IsRange);
   }
 
   std::vector<BYTE> report(caps.InputReportByteLength);
-  std::vector<BYTE> lastReport = L->prevReport.empty() ? std::vector<BYTE>(caps.InputReportByteLength) : L->prevReport;
+
+  // Maintain last state per ReportID so we only diff comparable packets.
+  std::unordered_map<UCHAR, std::vector<BYTE>> lastById;
 
   OVERLAPPED ov{};
   ov.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
@@ -491,19 +483,18 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     return;
   }
 
-  auto collectUsages = [&](const std::vector<BYTE>& src, std::unordered_set<USHORT>& out){
+  auto collectUsages = [&](const std::vector<BYTE>& src,
+                           std::unordered_set<USHORT>& out){
+    if (src.empty()) return;
+    UCHAR rid = src[0];
+
     for (USHORT i = 0; i < numBtnCaps; ++i) {
       const auto& bc = btnCaps[i];
       if (bc.UsagePage != HID_USAGE_PAGE_BUTTON) continue;
-      // if (bc.ReportID == 0) continue; TODO idek
+      if (bc.ReportID != rid) continue; // critical: only parse matching report ID
 
-      std::vector<BYTE> tmp(src);
-      if (tmp.empty()) continue;
-      tmp[0] = bc.ReportID;
-
-      ULONG cnt = bc.IsRange
-        ? (ULONG)(bc.Range.UsageMax - bc.Range.UsageMin + 1)
-        : 32UL;
+      ULONG cnt = HidP_MaxUsageListLength(HidP_Input, bc.UsagePage, prep);
+      if (cnt == 0) continue;
       std::vector<USAGE> usages(cnt);
 
       NTSTATUS s = HidP_GetUsages(
@@ -513,14 +504,14 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
         usages.data(),
         &cnt,
         prep,
-        (PCHAR)tmp.data(),
-        (ULONG)tmp.size()
+        (PCHAR)src.data(),
+        (ULONG)src.size()
       );
       if (s == HIDP_STATUS_SUCCESS && cnt > 0) {
         for (ULONG k = 0; k < cnt; ++k) out.insert((USHORT)usages[k]);
       } else if (g_debug) {
-        dbg_printf("[WinHID] RunReader: HidP_GetUsages failed for ReportID=%u Page=%u LC=%u: st=0x%08X",
-                   bc.ReportID, bc.UsagePage, bc.LinkCollection, (unsigned)s);
+        dbg_printf("[WinHID] RunReader: HidP_GetUsages failed for rid=%u page=%u lc=%u: st=0x%08X",
+                   rid, bc.UsagePage, bc.LinkCollection, (unsigned)s);
       }
     }
   };
@@ -550,15 +541,15 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     }
     if (bytesRead == 0) continue;
 
-    if (g_debug) {
-      // dbg_printf("[WinHID] RunReader: bytesRead=%lu reportID=%u", (unsigned long)bytesRead, (unsigned)(report.size() ? report[0] : 0));
-    }
-
     std::unordered_set<USHORT> pressed;
     std::unordered_set<USHORT> prevPressed;
 
+    // Current report buttons
     collectUsages(report, pressed);
-    if (!lastReport.empty()) collectUsages(lastReport, prevPressed);
+
+    // Previous for the same ReportID
+    auto& prevBuf = lastById[report[0]]; // creates empty if first time
+    if (!prevBuf.empty()) collectUsages(prevBuf, prevPressed);
 
     const auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::system_clock::now().time_since_epoch()).count();
@@ -596,7 +587,8 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
       }
     }
 
-    lastReport = report;
+    // Store last buffer for this ReportID only
+    prevBuf = report;
   }
 
   if (ov.hEvent) CloseHandle(ov.hEvent);
@@ -695,7 +687,7 @@ Napi::Value WinHID::StartListening(const Napi::CallbackInfo& info) {
     L->usagePage = usagePage;
     L->usage = usage;
     L->inputReportLen = inLen;
-    L->prevReport.assign(inLen, 0);
+    L->prevReport.assign(inLen, 0); // legacy field; no longer used by RunReader
 
     L->tsfn = Napi::ThreadSafeFunction::New(env, cb, "hid-button-listener", 0, 1);
 
