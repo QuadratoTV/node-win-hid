@@ -463,16 +463,24 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     }
   }
   dbg_printf("[WinHID] RunReader: InLen=%u ButtonCaps=%u", caps.InputReportByteLength, numBtnCaps);
+
+  // Determine whether this device uses report IDs (any non-zero ReportID present for input buttons).
+  bool hasReportIDs = false;
+  std::unordered_set<UCHAR> validReportIDs; // for sanity checks
   for (USHORT i = 0; i < numBtnCaps; ++i) {
     const auto& bc = btnCaps[i];
-    if (bc.UsagePage != HID_USAGE_PAGE_BUTTON) continue; // skip non-button
-    dbg_printf("[WinHID]   Cap[%u]: ReportID=%u UsagePage=%u LinkCollection=%u IsRange=%u",
-               (unsigned)i, bc.ReportID, bc.UsagePage, bc.LinkCollection, (unsigned)bc.IsRange);
+    if (bc.UsagePage != HID_USAGE_PAGE_BUTTON) continue;
+    validReportIDs.insert(static_cast<UCHAR>(bc.ReportID));
+    if (bc.ReportID != 0) hasReportIDs = true;
+    if (g_debug) {
+      dbg_printf("[WinHID]   Cap[%u]: ReportID=%u UsagePage=%u LinkCollection=%u IsRange=%u",
+                 (unsigned)i, bc.ReportID, bc.UsagePage, bc.LinkCollection, (unsigned)bc.IsRange);
+    }
   }
 
   std::vector<BYTE> report(caps.InputReportByteLength);
 
-  // Maintain last state per ReportID so we only diff comparable packets.
+  // Maintain last state per "logical" report id. If no report IDs, the key is 0.
   std::unordered_map<UCHAR, std::vector<BYTE>> lastById;
 
   OVERLAPPED ov{};
@@ -483,15 +491,31 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     return;
   }
 
+  // Helper: compute the applicable ReportID for a given buffer.
+  auto getRid = [&](const std::vector<BYTE>& src) -> UCHAR {
+    if (!hasReportIDs) return 0;                 // no ID byte in buffer
+    if (src.empty()) return 0;
+    return src[0];                               // first byte is ReportID
+  };
+
+  // Parse pressed button usages from a specific buffer.
   auto collectUsages = [&](const std::vector<BYTE>& src,
                            std::unordered_set<USHORT>& out){
     if (src.empty()) return;
-    UCHAR rid = src[0];
+    UCHAR rid = getRid(src);
+
+    // If device uses IDs, skip packets with unknown IDs.
+    if (hasReportIDs && !validReportIDs.empty() && !validReportIDs.count(rid)) {
+      if (g_debug) dbg_printf("[WinHID] RunReader: skip unknown ReportID=%u", rid);
+      return;
+    }
 
     for (USHORT i = 0; i < numBtnCaps; ++i) {
       const auto& bc = btnCaps[i];
       if (bc.UsagePage != HID_USAGE_PAGE_BUTTON) continue;
-      if (bc.ReportID != rid) continue; // critical: only parse matching report ID
+
+      // Only parse caps that match the current packet's ReportID.
+      if (bc.ReportID != rid) continue;
 
       ULONG cnt = HidP_MaxUsageListLength(HidP_Input, bc.UsagePage, prep);
       if (cnt == 0) continue;
@@ -510,7 +534,7 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
       if (s == HIDP_STATUS_SUCCESS && cnt > 0) {
         for (ULONG k = 0; k < cnt; ++k) out.insert((USHORT)usages[k]);
       } else if (g_debug) {
-        dbg_printf("[WinHID] RunReader: HidP_GetUsages failed for rid=%u page=%u lc=%u: st=0x%08X",
+        dbg_printf("[WinHID] RunReader: HidP_GetUsages failed rid=%u page=%u lc=%u: st=0x%08X",
                    rid, bc.UsagePage, bc.LinkCollection, (unsigned)s);
       }
     }
@@ -541,14 +565,13 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     }
     if (bytesRead == 0) continue;
 
-    std::unordered_set<USHORT> pressed;
-    std::unordered_set<USHORT> prevPressed;
+    // Determine logical report id for diffing.
+    UCHAR rid = getRid(report);
 
-    // Current report buttons
+    std::unordered_set<USHORT> pressed, prevPressed;
     collectUsages(report, pressed);
 
-    // Previous for the same ReportID
-    auto& prevBuf = lastById[report[0]]; // creates empty if first time
+    auto& prevBuf = lastById[rid];         // creates empty if first time
     if (!prevBuf.empty()) collectUsages(prevBuf, prevPressed);
 
     const auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -557,7 +580,7 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     // Emits for presses
     for (auto u : pressed) {
       if (!prevPressed.count(u)) {
-        if (g_debug) dbg_printf("[WinHID] Emit press: usage=%u", u);
+        if (g_debug) dbg_printf("[WinHID] Emit press: usage=%u rid=%u", u, rid);
         L->tsfn.BlockingCall([L, u, now](Napi::Env env, Napi::Function cb){
           Napi::Object evt = Napi::Object::New(env);
           evt.Set("path", Napi::String::New(env, WinHID::WToU8(L->pathW)));
@@ -573,7 +596,7 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
     // Emits for releases
     for (auto u : prevPressed) {
       if (!pressed.count(u)) {
-        if (g_debug) dbg_printf("[WinHID] Emit release: usage=%u", u);
+        if (g_debug) dbg_printf("[WinHID] Emit release: usage=%u rid=%u", u, rid);
         L->tsfn.BlockingCall([L, u, now](Napi::Env env, Napi::Function cb){
           Napi::Object evt = Napi::Object::New(env);
           evt.Set("path", Napi::String::New(env, WinHID::WToU8(L->pathW)));
@@ -587,7 +610,7 @@ void WinHID::RunReader(std::shared_ptr<Listener> L) {
       }
     }
 
-    // Store last buffer for this ReportID only
+    // Store last buffer for this logical ReportID
     prevBuf = report;
   }
 
