@@ -620,9 +620,7 @@ void WinHID::startReaderForPath(const std::wstring& pathW) {
   if (pass && wantUsagePage_ && usagePage != wantUsagePage_) pass = false;
   if (pass && wantUsage_ && usage != wantUsage_) pass = false;
 
-  if (!pass) { CloseHandle(h); return; }
-
-  if (cbRef_.IsEmpty()) { CloseHandle(h); return; }
+  if (!pass || !tsfn_ready_) { CloseHandle(h); return; }
 
   auto L = std::make_shared<Listener>();
   L->pathW = pathW;
@@ -632,10 +630,9 @@ void WinHID::startReaderForPath(const std::wstring& pathW) {
   L->inputReportLen = inLen;
   L->prevReport.assign(inLen, 0);
 
-  // Create TSFN targeting the stored JS callback
-  Napi::Env env = cbRef_.Env();
-  L->tsfn = Napi::ThreadSafeFunction::New(env, cbRef_.Value(),
-                                          "hid-button-listener", 0, 1);
+  // use shared TSFN; increment thread count for this reader
+  tsfn_.Acquire();
+  L->tsfn = tsfn_;
 
   dbg_printf("[WinHID] startReaderForPath: starting reader for %s (Page=%u Usage=%u InLen=%u)",
              key.c_str(), usagePage, usage, inLen);
@@ -659,7 +656,7 @@ void WinHID::stopReaderForPath(const std::wstring& pathW) {
   L->stop.store(true);
   if (L->handle != INVALID_HANDLE_VALUE) CancelIoEx(L->handle, nullptr);
   if (L->th.joinable()) L->th.join();
-  if (L->tsfn) L->tsfn.Release();
+  if (L->tsfn) L->tsfn.Release();   // release this reader’s claim
   if (L->handle != INVALID_HANDLE_VALUE) CloseHandle(L->handle);
 }
 
@@ -695,6 +692,11 @@ DWORD CALLBACK WinHID::OnPnpEvent(HCMNOTIFICATION, PVOID ctx,
 Napi::Value WinHID::StartListening(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
 
+  // if already running, reset to avoid leaks
+  if (tsfn_ready_) {
+    stopAll();
+  }
+
   // Args: (filter?, callback)
   int cbIndex = (info.Length() >= 1 && info[0].IsFunction()) ? 0 : 1;
   if (info.Length() <= cbIndex || !info[cbIndex].IsFunction()) {
@@ -702,24 +704,30 @@ Napi::Value WinHID::StartListening(const Napi::CallbackInfo& info) {
     return env.Undefined();
   }
   Napi::Function cb = info[cbIndex].As<Napi::Function>();
-  cbRef_.Reset(cb, 1); // store for hot-plug
 
   wantVid_ = wantPid_ = wantUsagePage_ = wantUsage_ = 0;
   if (cbIndex == 1 && info[0].IsObject()) {
     Napi::Object f = info[0].As<Napi::Object>();
-    if (f.Has("vendorId"))   wantVid_ = (USHORT)f.Get("vendorId").ToNumber().Uint32Value();
-    if (f.Has("productId"))  wantPid_ = (USHORT)f.Get("productId").ToNumber().Uint32Value();
+    if (f.Has("vendorId"))   wantVid_       = (USHORT)f.Get("vendorId").ToNumber().Uint32Value();
+    if (f.Has("productId"))  wantPid_       = (USHORT)f.Get("productId").ToNumber().Uint32Value();
     if (f.Has("usagePage"))  wantUsagePage_ = (USHORT)f.Get("usagePage").ToNumber().Uint32Value();
-    if (f.Has("usage"))      wantUsage_ = (USHORT)f.Get("usage").ToNumber().Uint32Value();
+    if (f.Has("usage"))      wantUsage_     = (USHORT)f.Get("usage").ToNumber().Uint32Value();
   }
   dbg_printf("[WinHID] StartListening: filter VID=0x%04X PID=0x%04X Page=%u Usage=%u",
              wantVid_, wantPid_, wantUsagePage_, wantUsage_);
+
+  // create one shared TSFN on the JS thread
+  tsfn_ = Napi::ThreadSafeFunction::New(
+      env, cb, "hid-button-listener", 0 /*queue size*/, 1 /*initialThreads*/);
+  tsfn_ready_ = true;
 
   // initial enumeration
   GUID hidGuid; HidD_GetHidGuid(&hidGuid);
   HDEVINFO devInfo = SetupDiGetClassDevsW(&hidGuid, nullptr, nullptr, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
   if (devInfo == INVALID_HANDLE_VALUE) {
     Napi::Error::New(env, "SetupDiGetClassDevs failed").ThrowAsJavaScriptException();
+    // release initial ref if creation succeeded
+    if (tsfn_ready_) { tsfn_.Release(); tsfn_ = Napi::ThreadSafeFunction(); tsfn_ready_ = false; }
     return env.Undefined();
   }
 
@@ -756,7 +764,7 @@ Napi::Value WinHID::StartListening(const Napi::CallbackInfo& info) {
     CONFIGRET cr = CM_Register_Notification(&filter, this, &WinHID::OnPnpEvent, &pnpNotify_);
     if (cr != CR_SUCCESS) {
       dbg_printf("[WinHID] CM_Register_Notification failed: 0x%X", (unsigned)cr);
-      // keep working with current devices even if registration failed
+      // still functional for already open devices
     } else {
       dbg_printf("[WinHID] CM_Register_Notification registered");
     }
@@ -795,7 +803,10 @@ void WinHID::stopAll() {
       L->handle = INVALID_HANDLE_VALUE;
     }
   }
-  cbRef_.Reset();
+
+  // final release to match initialThreads=1
+  if (tsfn_ready_) { tsfn_.Release(); tsfn_ = Napi::ThreadSafeFunction(); tsfn_ready_ = false; }
+
   dbg_printf("[WinHID] stopAll: done");
 }
 

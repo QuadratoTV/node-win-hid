@@ -45,8 +45,9 @@ private:
   std::unordered_map<std::string, std::shared_ptr<Listener>> listeners_;
   std::mutex listeners_mtx_;
 
-  // stored JS callback for future hot-plug readers
-  Napi::FunctionReference cbRef_;
+  // single shared TSFN created on the JS thread
+  Napi::ThreadSafeFunction tsfn_;
+  bool tsfn_ready_ = false;
 
   // filter requested by user
   USHORT wantVid_ = 0, wantPid_ = 0, wantUsagePage_ = 0, wantUsage_ = 0;
