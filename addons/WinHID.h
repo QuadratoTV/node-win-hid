@@ -18,19 +18,15 @@ public:
   ~WinHID();
   static Napi::Function GetClass(Napi::Env env);
 
-  // JS: new WinHID().getDevices(): Array<...>
   Napi::Value GetDevices(const Napi::CallbackInfo& info);
-
-  // JS: new WinHID().startListening(filter?, callback)
-  // filter?: { vendorId?, productId?, usagePage?, usage? }
+  // startListening(filter?, callback)
   Napi::Value StartListening(const Napi::CallbackInfo& info);
-
-  // JS: new WinHID().stopListening()  // stops all threads and releases handles
   Napi::Value StopListening(const Napi::CallbackInfo& info);
 
 private:
   struct Listener {
     std::wstring pathW;
+    std::string  pathNormU8;   // lowercased \\\\?\\hid#...
     HANDLE handle = INVALID_HANDLE_VALUE;
     std::thread th;
     std::atomic<bool> stop{false};
@@ -39,20 +35,21 @@ private:
     USHORT usage = 0;
     USHORT inputReportLen = 0;
     std::vector<BYTE> prevReport;
+
+    // identity info for consistent labeling
+    USHORT vid = 0, pid = 0;
+    std::string containerId;   // GUID string
+    std::string manufacturer, product, serial;
   };
 
-  // active readers by symbolic link path (UTF-8)
-  std::unordered_map<std::string, std::shared_ptr<Listener>> listeners_;
+  std::unordered_map<std::string, std::shared_ptr<Listener>> listeners_; // keyed by pathNormU8
   std::mutex listeners_mtx_;
 
-  // single shared TSFN created on the JS thread
   Napi::ThreadSafeFunction tsfn_;
   bool tsfn_ready_ = false;
 
-  // filter requested by user
   USHORT wantVid_ = 0, wantPid_ = 0, wantUsagePage_ = 0, wantUsage_ = 0;
 
-  // PnP notification handle
   HCMNOTIFICATION pnpNotify_ = nullptr;
 
   // helpers
